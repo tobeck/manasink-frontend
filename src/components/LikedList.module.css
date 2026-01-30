@@ -1,0 +1,130 @@
+.container {
+  padding: 16px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.count {
+  font-weight: 400;
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.card:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.thumb {
+  width: 56px;
+  height: 78px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.linkBtn,
+.removeBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: background var(--transition-fast);
+}
+
+.linkBtn {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.linkBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.removeBtn {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--color-pass);
+}
+
+.removeBtn:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+/* Empty state */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 20px;
+}
+
+.emptyIcon {
+  font-size: 4rem;
+  margin-bottom: 16px;
+}
+
+.emptyHint {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-top: 8px;
+}
+
+.discoverBtn {
+  margin-top: 24px;
+  padding: 12px 28px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--accent-gradient);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+}

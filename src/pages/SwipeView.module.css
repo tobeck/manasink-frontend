@@ -1,0 +1,33 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.cardArea {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.cardWrapper {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  aspect-ratio: 488 / 680;
+}
+
+@media (min-width: 500px) {
+  .cardWrapper {
+    max-width: 380px;
+  }
+}
+
+@media (min-height: 800px) {
+  .cardWrapper {
+    max-width: 400px;
+  }
+}
