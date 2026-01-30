@@ -105,3 +105,38 @@
   gap: 16px;
   color: var(--text-secondary);
 }
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px;
+  background: var(--bg-overlay);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tab {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.activeTab {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.statsContainer {
+  flex: 1;
+  overflow-y: auto;
+}

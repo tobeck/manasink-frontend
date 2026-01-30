@@ -4,6 +4,7 @@ import { searchCards } from '../api'
 import { ColorIdentity } from '../components/ColorPip'
 import { CardSearch } from '../components/CardSearch'
 import { DeckList } from '../components/DeckList'
+import { DeckStats } from '../components/DeckStats'
 import styles from './DeckBuilder.module.css'
 
 export function DeckBuilder() {
@@ -21,6 +22,7 @@ export function DeckBuilder() {
   
   const [isEditingName, setIsEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
+  const [activeTab, setActiveTab] = useState('cards') // 'cards' | 'stats'
   
   if (!deck) {
     return (
@@ -110,18 +112,46 @@ export function DeckBuilder() {
         </div>
       </div>
       
-      {/* Card search */}
-      <CardSearch 
-        colorIdentity={deck.commander.colorIdentity}
-        onAddCard={handleAddCard}
-        deckCards={deck.cards}
-      />
+      {/* Tab navigation */}
+      <div className={styles.tabs}>
+        <button
+          className={`${styles.tab} ${activeTab === 'cards' ? styles.activeTab : ''}`}
+          onClick={() => setActiveTab('cards')}
+        >
+          Cards
+        </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'stats' ? styles.activeTab : ''}`}
+          onClick={() => setActiveTab('stats')}
+        >
+          Stats
+        </button>
+      </div>
       
-      {/* Deck list */}
-      <DeckList 
-        cards={deck.cards}
-        onRemoveCard={handleRemoveCard}
-      />
+      {/* Tab content */}
+      {activeTab === 'cards' ? (
+        <>
+          {/* Card search */}
+          <CardSearch 
+            colorIdentity={deck.commander.colorIdentity}
+            onAddCard={handleAddCard}
+            deckCards={deck.cards}
+          />
+          
+          {/* Deck list */}
+          <DeckList 
+            cards={deck.cards}
+            onRemoveCard={handleRemoveCard}
+          />
+        </>
+      ) : (
+        <div className={styles.statsContainer}>
+          <DeckStats 
+            cards={deck.cards}
+            commander={deck.commander}
+          />
+        </div>
+      )}
     </div>
   )
 }
