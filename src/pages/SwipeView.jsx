@@ -6,6 +6,18 @@ import { ActionButtons } from '../components/ActionButtons'
 import { FilterModal } from '../components/FilterModal'
 import styles from './SwipeView.module.css'
 
+// Haptic feedback helper
+function triggerHaptic(style = 'light') {
+  if (navigator.vibrate) {
+    const patterns = {
+      light: 10,
+      medium: 20,
+      heavy: 30,
+    }
+    navigator.vibrate(patterns[style] || 10)
+  }
+}
+
 export function SwipeView() {
   const [isAnimating, setIsAnimating] = useState(false)
   const [animationDirection, setAnimationDirection] = useState(null)
@@ -16,6 +28,7 @@ export function SwipeView() {
   
   const {
     currentCommander,
+    nextUpCommander,
     nextCommander,
     resetQueue,
     isLoading,
@@ -42,8 +55,15 @@ export function SwipeView() {
     }, 350)
   }, [isAnimating, currentCommander, likeCommander, passCommander, nextCommander])
 
-  const handleLike = useCallback(() => handleSwipe('right'), [handleSwipe])
-  const handlePass = useCallback(() => handleSwipe('left'), [handleSwipe])
+  const handleLike = useCallback(() => {
+    triggerHaptic('medium')
+    handleSwipe('right')
+  }, [handleSwipe])
+  
+  const handlePass = useCallback(() => {
+    triggerHaptic('light')
+    handleSwipe('left')
+  }, [handleSwipe])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -54,6 +74,14 @@ export function SwipeView() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [handleLike, handlePass])
+
+  // Preload next image
+  useEffect(() => {
+    if (nextUpCommander?.imageLarge) {
+      const img = new Image()
+      img.src = nextUpCommander.imageLarge
+    }
+  }, [nextUpCommander])
 
   return (
     <div className={styles.container}>
@@ -68,6 +96,7 @@ export function SwipeView() {
               onPass={handlePass}
               isAnimating={isAnimating}
               animationDirection={animationDirection}
+              nextCommander={nextUpCommander}
             />
           )}
         </div>

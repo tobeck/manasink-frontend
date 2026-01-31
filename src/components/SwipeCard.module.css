@@ -65,14 +65,14 @@
 }
 
 .like {
-  right: 16px;
+  left: 16px;
   background: var(--color-like-bg);
   border: 3px solid var(--color-like);
   color: #fff;
 }
 
 .pass {
-  left: 16px;
+  right: 16px;
   background: var(--color-pass-bg);
   border: 3px solid var(--color-pass);
   color: #fff;

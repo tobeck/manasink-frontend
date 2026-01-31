@@ -2,16 +2,41 @@ import { useSwipeGesture } from '../hooks/useSwipeGesture'
 import { ColorIdentity } from './ColorPip'
 import styles from './SwipeCard.module.css'
 
+// Haptic feedback helper
+function triggerHaptic(style = 'light') {
+  if (navigator.vibrate) {
+    // Android
+    const patterns = {
+      light: 10,
+      medium: 20,
+      heavy: 30,
+    }
+    navigator.vibrate(patterns[style] || 10)
+  }
+  // iOS - no direct API, but some browsers support it via AudioContext
+}
+
 export function SwipeCard({ 
   commander, 
   onLike, 
   onPass, 
   isAnimating, 
-  animationDirection 
+  animationDirection,
+  nextCommander, // for preloading
 }) {
+  const handleSwipeRight = () => {
+    triggerHaptic('medium')
+    onLike()
+  }
+  
+  const handleSwipeLeft = () => {
+    triggerHaptic('light')
+    onPass()
+  }
+
   const { handlers, style, swipeProgress } = useSwipeGesture({
-    onSwipeLeft: onPass,
-    onSwipeRight: onLike,
+    onSwipeLeft: handleSwipeLeft,
+    onSwipeRight: handleSwipeRight,
     threshold: 100,
   })
 
@@ -36,7 +61,12 @@ export function SwipeCard({
         draggable={false}
       />
       
-      {/* Swipe indicators */}
+      {/* Preload next card image */}
+      {nextCommander && (
+        <link rel="preload" as="image" href={nextCommander.imageLarge} />
+      )}
+      
+      {/* Swipe indicators - LIKE on left (shows when swiping right), PASS on right */}
       <div 
         className={`${styles.indicator} ${styles.like}`}
         style={{ opacity: Math.max(0, swipeProgress) }}

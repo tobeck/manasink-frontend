@@ -75,6 +75,7 @@ export function useCommanderQueue(colorFilters) {
 
   return {
     currentCommander: queue[0] || null,
+    nextUpCommander: queue[1] || null, // For preloading
     nextCommander,
     resetQueue,
     isLoading: isLoading && queue.length === 0,
