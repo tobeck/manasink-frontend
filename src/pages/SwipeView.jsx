@@ -6,18 +6,6 @@ import { ActionButtons } from '../components/ActionButtons'
 import { FilterModal } from '../components/FilterModal'
 import styles from './SwipeView.module.css'
 
-// Haptic feedback helper
-function triggerHaptic(style = 'light') {
-  if (navigator.vibrate) {
-    const patterns = {
-      light: 10,
-      medium: 20,
-      heavy: 30,
-    }
-    navigator.vibrate(patterns[style] || 10)
-  }
-}
-
 export function SwipeView() {
   const [isAnimating, setIsAnimating] = useState(false)
   const [animationDirection, setAnimationDirection] = useState(null)
@@ -52,18 +40,11 @@ export function SwipeView() {
       nextCommander()
       setIsAnimating(false)
       setAnimationDirection(null)
-    }, 350)
+    }, 300)
   }, [isAnimating, currentCommander, likeCommander, passCommander, nextCommander])
 
-  const handleLike = useCallback(() => {
-    triggerHaptic('medium')
-    handleSwipe('right')
-  }, [handleSwipe])
-  
-  const handlePass = useCallback(() => {
-    triggerHaptic('light')
-    handleSwipe('left')
-  }, [handleSwipe])
+  const handleLike = useCallback(() => handleSwipe('right'), [handleSwipe])
+  const handlePass = useCallback(() => handleSwipe('left'), [handleSwipe])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -86,20 +67,18 @@ export function SwipeView() {
   return (
     <div className={styles.container}>
       <div className={styles.cardArea}>
-        <div className={styles.cardWrapper}>
-          {error ? (
-            <ErrorCard message={error} onRetry={retry} />
-          ) : (
-            <SwipeCard
-              commander={currentCommander}
-              onLike={handleLike}
-              onPass={handlePass}
-              isAnimating={isAnimating}
-              animationDirection={animationDirection}
-              nextCommander={nextUpCommander}
-            />
-          )}
-        </div>
+        {error ? (
+          <ErrorCard message={error} onRetry={retry} />
+        ) : (
+          <SwipeCard
+            commander={currentCommander}
+            onLike={handleLike}
+            onPass={handlePass}
+            isAnimating={isAnimating}
+            animationDirection={animationDirection}
+            nextCommander={nextUpCommander}
+          />
+        )}
       </div>
       
       <ActionButtons

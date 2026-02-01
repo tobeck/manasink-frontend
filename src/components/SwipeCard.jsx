@@ -1,11 +1,10 @@
 import { useSwipeGesture } from '../hooks/useSwipeGesture'
 import styles from './SwipeCard.module.css'
 
-// Haptic feedback helper
+// Haptic feedback
 function triggerHaptic(style = 'light') {
   if (navigator.vibrate) {
-    const patterns = { light: 10, medium: 20, heavy: 30 }
-    navigator.vibrate(patterns[style] || 10)
+    navigator.vibrate(style === 'medium' ? 15 : 8)
   }
 }
 
@@ -30,7 +29,7 @@ export function SwipeCard({
   const { handlers, style, swipeProgress } = useSwipeGesture({
     onSwipeLeft: handleSwipeLeft,
     onSwipeRight: handleSwipeRight,
-    threshold: 100,
+    threshold: 80,
   })
 
   if (!commander) {
@@ -39,19 +38,23 @@ export function SwipeCard({
 
   const animStyle = isAnimating
     ? {
-        transform: `translateX(${animationDirection === 'right' ? '150%' : '-150%'}) rotate(${animationDirection === 'right' ? 30 : -30}deg)`,
+        transform: `translateX(${animationDirection === 'right' ? '120%' : '-120%'}) rotate(${animationDirection === 'right' ? 20 : -20}deg)`,
         opacity: 0,
-        transition: 'transform 0.4s ease-out, opacity 0.4s ease-out',
+        transition: 'transform 0.3s ease-out, opacity 0.3s ease-out',
       }
     : style
 
-  // Format price
   const price = commander.priceUsd 
     ? `$${parseFloat(commander.priceUsd).toFixed(2)}`
     : null
 
   return (
-    <div className={styles.cardContainer}>
+    <div className={styles.wrapper}>
+      {/* Preload next card */}
+      {nextCommander && (
+        <link rel="preload" as="image" href={nextCommander.imageLarge} />
+      )}
+      
       <div className={styles.card} style={animStyle} {...handlers}>
         <img
           className={styles.image}
@@ -60,39 +63,32 @@ export function SwipeCard({
           draggable={false}
         />
         
-        {/* Preload next card image */}
-        {nextCommander && (
-          <link rel="preload" as="image" href={nextCommander.imageLarge} />
-        )}
-        
-        {/* Swipe indicators - LIKE on left (shows when swiping right), PASS on right */}
+        {/* Swipe indicators */}
         <div 
           className={`${styles.indicator} ${styles.like}`}
-          style={{ opacity: Math.max(0, swipeProgress) }}
+          style={{ opacity: Math.max(0, swipeProgress * 1.5) }}
         >
           LIKE
         </div>
         <div 
           className={`${styles.indicator} ${styles.pass}`}
-          style={{ opacity: Math.max(0, -swipeProgress) }}
+          style={{ opacity: Math.max(0, -swipeProgress * 1.5) }}
         >
-          PASS
+          NOPE
         </div>
       </div>
       
-      {/* Card info below the card */}
-      <div className={styles.cardInfo}>
+      {/* Info below card */}
+      <div className={styles.info}>
         <a 
-          className={styles.scryfallLink}
           href={commander.scryfallUri}
           target="_blank"
           rel="noopener noreferrer"
+          className={styles.link}
         >
-          View on Scryfall ↗
+          Scryfall ↗
         </a>
-        {price && (
-          <span className={styles.price}>{price}</span>
-        )}
+        {price && <span className={styles.price}>{price}</span>}
       </div>
     </div>
   )
@@ -100,11 +96,10 @@ export function SwipeCard({
 
 export function LoadingCard() {
   return (
-    <div className={styles.cardContainer}>
+    <div className={styles.wrapper}>
       <div className={styles.card}>
         <div className={styles.loadingContent}>
           <div className={styles.spinner} />
-          <p>Finding commanders...</p>
         </div>
       </div>
     </div>
@@ -113,11 +108,11 @@ export function LoadingCard() {
 
 export function ErrorCard({ message, onRetry }) {
   return (
-    <div className={styles.cardContainer}>
+    <div className={styles.wrapper}>
       <div className={styles.card}>
         <div className={styles.loadingContent}>
           <span className={styles.errorIcon}>😕</span>
-          <p>{message || 'Something went wrong'}</p>
+          <p className={styles.errorText}>{message || 'Something went wrong'}</p>
           <button className={styles.retryBtn} onClick={onRetry}>
             Try Again
           </button>

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { useStore } from './store'
 import { Header } from './components/Header'
+import { BottomNav } from './components/BottomNav'
 import { SwipeView } from './pages/SwipeView'
 import { LikedList } from './components/LikedList'
 import { DecksView } from './pages/DecksView'
@@ -15,10 +16,8 @@ function AppContent() {
   const reset = useStore(s => s.reset)
   const { user, loading: authLoading } = useAuth()
   
-  // Initialize store when auth state changes
   useEffect(() => {
     if (!authLoading) {
-      // Reset and reinitialize when user changes (login/logout)
       reset()
       initialize()
     }
@@ -29,21 +28,23 @@ function AppContent() {
       <div className={styles.app}>
         <div className={styles.loading}>
           <div className={styles.spinner} />
-          <p>Loading...</p>
         </div>
       </div>
     )
   }
 
+  const showBottomNav = view !== 'deckbuilder'
+
   return (
     <div className={styles.app}>
       <Header />
-      <main className={styles.main}>
+      <main className={`${styles.main} ${!showBottomNav ? styles.noBottomNav : ''}`}>
         {view === 'swipe' && <SwipeView />}
         {view === 'liked' && <LikedList />}
         {view === 'decks' && <DecksView />}
         {view === 'deckbuilder' && <DeckBuilder />}
       </main>
+      {showBottomNav && <BottomNav />}
     </div>
   )
 }

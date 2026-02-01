@@ -12,67 +12,51 @@ export function LikedList() {
   if (likedCommanders.length === 0) {
     return (
       <div className={styles.empty}>
-        <span className={styles.emptyIcon}>💔</span>
-        <h2>No liked commanders yet</h2>
-        <p>Swipe right on commanders you like to add them here</p>
+        <div className={styles.emptyIcon}>💜</div>
+        <h2>No liked commanders</h2>
+        <p>Swipe right on commanders you want to build with</p>
       </div>
     )
   }
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>Liked Commanders</h2>
-        <span className={styles.count}>{likedCommanders.length}</span>
-      </div>
-      
-      <div className={styles.list}>
+      <div className={styles.grid}>
         {likedCommanders.map(commander => (
           <div key={commander.id} className={styles.card}>
-            <img 
-              src={commander.image || commander.imageLarge} 
-              alt={commander.name}
-              className={styles.image}
-            />
-            
-            <div className={styles.info}>
-              <h3 className={styles.name}>{commander.name}</h3>
-              <p className={styles.type}>{commander.typeLine}</p>
-              <ColorIdentity colors={commander.colorIdentity} size="small" />
-              
-              <div className={styles.meta}>
-                {commander.priceUsd && (
-                  <span className={styles.price}>
-                    ${parseFloat(commander.priceUsd).toFixed(2)}
-                  </span>
-                )}
-                <a 
-                  href={commander.scryfallUri}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.scryfallLink}
-                >
-                  Scryfall ↗
-                </a>
-              </div>
-            </div>
-            
-            <div className={styles.actions}>
-              <button
-                className={styles.buildBtn}
-                onClick={() => setBuildingCommander(commander)}
-                title="Build deck"
-              >
-                Build
-              </button>
+            <div className={styles.imageWrapper}>
+              <img 
+                src={commander.image || commander.imageLarge} 
+                alt={commander.name}
+                className={styles.image}
+              />
               <button
                 className={styles.removeBtn}
                 onClick={() => unlikeCommander(commander.id)}
-                title="Remove"
+                aria-label="Remove"
               >
                 ✕
               </button>
             </div>
+            
+            <div className={styles.info}>
+              <h3 className={styles.name}>{commander.name}</h3>
+              <div className={styles.meta}>
+                <ColorIdentity colors={commander.colorIdentity} size="small" />
+                {commander.priceUsd && (
+                  <span className={styles.price}>
+                    ${parseFloat(commander.priceUsd).toFixed(0)}
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            <button
+              className={styles.buildBtn}
+              onClick={() => setBuildingCommander(commander)}
+            >
+              Build Deck
+            </button>
           </div>
         ))}
       </div>

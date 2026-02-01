@@ -1,72 +1,90 @@
-import { useState, useEffect } from 'react'
 import { useStore } from '../store'
 import styles from './FilterModal.module.css'
 
 const COLORS = [
-  { id: 'W', name: 'White' },
-  { id: 'U', name: 'Blue' },
-  { id: 'B', name: 'Black' },
-  { id: 'R', name: 'Red' },
-  { id: 'G', name: 'Green' },
-  { id: 'C', name: 'Colorless' },
+  { id: 'W', name: 'White', symbol: '○', color: '#F8F6D8' },
+  { id: 'U', name: 'Blue', symbol: '●', color: '#0E68AB' },
+  { id: 'B', name: 'Black', symbol: '●', color: '#211D1E' },
+  { id: 'R', name: 'Red', symbol: '●', color: '#D3202A' },
+  { id: 'G', name: 'Green', symbol: '●', color: '#00733E' },
+  { id: 'C', name: 'Colorless', symbol: '◇', color: '#CBC2BF' },
 ]
 
 export function FilterModal({ onApply }) {
   const isOpen = useStore(s => s.filterModalOpen)
   const setOpen = useStore(s => s.setFilterModalOpen)
   const colorFilters = useStore(s => s.preferences.colorFilters)
-  const setColorFilters = useStore(s => s.setColorFilters)
-  
-  const [local, setLocal] = useState(colorFilters)
+  const toggleColorFilter = useStore(s => s.toggleColorFilter)
 
-  useEffect(() => {
-    if (isOpen) setLocal(colorFilters)
-  }, [isOpen, colorFilters])
+  if (!isOpen) return null
 
-  const toggle = (id) => {
-    setLocal(prev => 
-      prev.includes(id) 
-        ? prev.filter(c => c !== id) 
-        : [...prev, id]
-    )
-  }
-
-  const reset = () => setLocal(['W', 'U', 'B', 'R', 'G', 'C'])
-
-  const apply = () => {
-    const filters = local.length > 0 ? local : ['W', 'U', 'B', 'R', 'G', 'C']
-    setColorFilters(filters)
+  const handleClose = () => {
     setOpen(false)
     onApply?.()
   }
 
-  if (!isOpen) return null
+  const allSelected = colorFilters.length === 6
+  const noneSelected = colorFilters.length === 0
+
+  const handleSelectAll = () => {
+    COLORS.forEach(c => {
+      if (!colorFilters.includes(c.id)) {
+        toggleColorFilter(c.id)
+      }
+    })
+  }
+
+  const handleSelectNone = () => {
+    COLORS.forEach(c => {
+      if (colorFilters.includes(c.id)) {
+        toggleColorFilter(c.id)
+      }
+    })
+  }
 
   return (
     <>
-      <div className={styles.backdrop} onClick={() => setOpen(false)} />
+      <div className={styles.backdrop} onClick={handleClose} />
       <div className={styles.modal}>
         <div className={styles.handle} />
-        <h2 className={styles.title}>Filter Commanders</h2>
         
-        <p className={styles.label}>Color Identity</p>
+        <h2 className={styles.title}>Color Identity</h2>
+        <p className={styles.desc}>Show commanders that include these colors</p>
+        
         <div className={styles.colors}>
-          {COLORS.map(c => (
+          {COLORS.map(color => (
             <button
-              key={c.id}
-              className={`${styles.colorBtn} ${styles[c.id]} ${local.includes(c.id) ? styles.active : ''}`}
-              onClick={() => toggle(c.id)}
-              title={c.name}
+              key={color.id}
+              className={`${styles.colorBtn} ${colorFilters.includes(color.id) ? styles.active : ''}`}
+              onClick={() => toggleColorFilter(color.id)}
+              style={{ '--color': color.color }}
             >
-              {c.id}
+              <span className={styles.pip}>{color.symbol}</span>
+              <span className={styles.colorName}>{color.name}</span>
             </button>
           ))}
         </div>
         
-        <div className={styles.btnRow}>
-          <button className={styles.resetBtn} onClick={reset}>Reset</button>
-          <button className={styles.applyBtn} onClick={apply}>Apply</button>
+        <div className={styles.quickActions}>
+          <button 
+            className={styles.quickBtn} 
+            onClick={handleSelectAll}
+            disabled={allSelected}
+          >
+            Select all
+          </button>
+          <button 
+            className={styles.quickBtn} 
+            onClick={handleSelectNone}
+            disabled={noneSelected}
+          >
+            Clear
+          </button>
         </div>
+        
+        <button className={styles.doneBtn} onClick={handleClose}>
+          Done
+        </button>
       </div>
     </>
   )
