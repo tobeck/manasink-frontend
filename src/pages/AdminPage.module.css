@@ -121,3 +121,31 @@
   border-radius: 50%;
   object-fit: cover;
 }
+
+.storeBreakdown {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+}
+
+.subTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.storeRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--bg-elevated);
+  font-size: 0.875rem;
+}
+
+.storeRow:last-child {
+  border-bottom: none;
+}

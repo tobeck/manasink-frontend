@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useStore } from '../store'
+import { useAuth } from '../context/AuthContext'
 import { useCommanderQueue } from '../hooks/useCommanderQueue'
 import { SwipeCard, ErrorCard } from '../components/SwipeCard'
 import { FilterModal } from '../components/FilterModal'
+import { SignInPrompt } from '../components/SignInPrompt'
 import styles from './SwipeView.module.css'
 
 const HINTS_DISMISS_AFTER = 3
+const SIGNIN_PROMPT_AFTER = 3
+const SIGNIN_PROMPT_KEY = 'manasink:signInPromptDismissed'
 
 export function SwipeView() {
   const [isAnimating, setIsAnimating] = useState(false)
@@ -14,7 +18,9 @@ export function SwipeView() {
     const saved = localStorage.getItem('manasink:swipeCount')
     return saved ? parseInt(saved, 10) : 0
   })
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false)
   
+  const { user } = useAuth()
   const colorFilters = useStore(s => s.preferences.colorFilters)
   const likeCommander = useStore(s => s.likeCommander)
   const passCommander = useStore(s => s.passCommander)
@@ -47,15 +53,29 @@ export function SwipeView() {
       passCommander(currentCommander)
     }
     
+    // Show sign-in prompt after N swipes (only if not signed in and not dismissed)
+    if (
+      newCount === SIGNIN_PROMPT_AFTER && 
+      !user && 
+      !localStorage.getItem(SIGNIN_PROMPT_KEY)
+    ) {
+      setTimeout(() => setShowSignInPrompt(true), 400)
+    }
+    
     setTimeout(() => {
       nextCommander()
       setIsAnimating(false)
       setAnimationDirection(null)
     }, 300)
-  }, [isAnimating, currentCommander, likeCommander, passCommander, nextCommander, swipeCount])
+  }, [isAnimating, currentCommander, likeCommander, passCommander, nextCommander, swipeCount, user])
 
   const handleLike = useCallback(() => handleSwipe('right'), [handleSwipe])
   const handlePass = useCallback(() => handleSwipe('left'), [handleSwipe])
+
+  const handleDismissSignIn = () => {
+    setShowSignInPrompt(false)
+    localStorage.setItem(SIGNIN_PROMPT_KEY, 'true')
+  }
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -107,6 +127,10 @@ export function SwipeView() {
       </div>
       
       <FilterModal onApply={resetQueue} />
+      
+      {showSignInPrompt && (
+        <SignInPrompt onClose={handleDismissSignIn} />
+      )}
     </div>
   )
 }

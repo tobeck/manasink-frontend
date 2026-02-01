@@ -11,6 +11,7 @@ export function AdminPage() {
   const [userStats, setUserStats] = useState([])
   const [dailyStats, setDailyStats] = useState([])
   const [popularCommanders, setPopularCommanders] = useState([])
+  const [buyStats, setBuyStats] = useState(null)
   const [error, setError] = useState(null)
 
   // Check if user is admin
@@ -82,6 +83,31 @@ export function AdminPage() {
 
         if (!cmdError) setPopularCommanders(commanders || [])
 
+        // Fetch buy stats
+        const { data: buyExpands } = await supabase
+          .from('analytics_events')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_type', 'buy_expand')
+
+        const { data: buyClicks } = await supabase
+          .from('analytics_events')
+          .select('event_data', { count: 'exact' })
+          .eq('event_type', 'buy_click')
+
+        const storeBreakdown = {}
+        if (buyClicks) {
+          buyClicks.forEach(event => {
+            const store = event.event_data?.store || 'Unknown'
+            storeBreakdown[store] = (storeBreakdown[store] || 0) + 1
+          })
+        }
+
+        setBuyStats({
+          expands: buyExpands?.length || 0,
+          clicks: buyClicks?.length || 0,
+          byStore: storeBreakdown,
+        })
+
       } catch (err) {
         console.error('Error fetching stats:', err)
         setError(err.message)
@@ -145,6 +171,35 @@ export function AdminPage() {
           <StatCard label="Total Decks" value={stats.total_decks} />
           <StatCard label="Active (30d)" value={stats.active_users_30d} />
         </div>
+      )}
+
+      {/* Buy Stats */}
+      {buyStats && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Buy Button Stats</h2>
+          <div className={styles.statsGrid}>
+            <StatCard label="Buy Expands" value={buyStats.expands} />
+            <StatCard label="Buy Clicks" value={buyStats.clicks} />
+            <StatCard 
+              label="Click Rate" 
+              value={buyStats.expands > 0 
+                ? `${Math.round(buyStats.clicks / buyStats.expands * 100)}%` 
+                : '0%'
+              } 
+            />
+          </div>
+          {Object.keys(buyStats.byStore).length > 0 && (
+            <div className={styles.storeBreakdown}>
+              <h3 className={styles.subTitle}>Clicks by Store</h3>
+              {Object.entries(buyStats.byStore).map(([store, count]) => (
+                <div key={store} className={styles.storeRow}>
+                  <span>{store}</span>
+                  <span>{count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {/* Daily Stats */}

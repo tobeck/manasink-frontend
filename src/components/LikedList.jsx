@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useStore } from '../store'
 import { ColorIdentity } from './ColorPip'
 import { BootstrapModal } from './BootstrapModal'
+import { trackEvent } from '../lib/analytics'
 import styles from './LikedList.module.css'
 
 export function LikedList() {
@@ -20,8 +21,13 @@ export function LikedList() {
     )
   }
 
-  const toggleBuy = (commanderId) => {
-    setExpandedBuy(expandedBuy === commanderId ? null : commanderId)
+  const toggleBuy = (commanderId, commanderName) => {
+    const isExpanding = expandedBuy !== commanderId
+    setExpandedBuy(isExpanding ? commanderId : null)
+    
+    if (isExpanding) {
+      trackEvent('buy_expand', { commander_id: commanderId, commander_name: commanderName })
+    }
   }
 
   return (
@@ -65,7 +71,7 @@ export function LikedList() {
               </button>
               <button
                 className={`${styles.buyBtn} ${expandedBuy === commander.id ? styles.active : ''}`}
-                onClick={() => toggleBuy(commander.id)}
+                onClick={() => toggleBuy(commander.id, commander.name)}
               >
                 Buy ▾
               </button>
@@ -112,6 +118,14 @@ function BuyOptions({ commander }) {
     },
   ]
 
+  const handleClick = (storeName) => {
+    trackEvent('buy_click', { 
+      commander_id: commander.id, 
+      commander_name: commander.name,
+      store: storeName 
+    })
+  }
+
   return (
     <div className={styles.buyOptions}>
       {options.map(option => (
@@ -121,6 +135,7 @@ function BuyOptions({ commander }) {
           target="_blank"
           rel="noopener noreferrer"
           className={styles.buyOption}
+          onClick={() => handleClick(option.name)}
         >
           <span className={styles.buyName}>{option.name}</span>
           {option.price && <span className={styles.buyPrice}>{option.price}</span>}
