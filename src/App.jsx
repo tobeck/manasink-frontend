@@ -10,16 +10,21 @@ import styles from './App.module.css'
 
 function AppContent() {
   const view = useStore(s => s.view)
-  const { user, loading } = useAuth()
+  const isLoading = useStore(s => s.isLoading)
+  const initialize = useStore(s => s.initialize)
+  const reset = useStore(s => s.reset)
+  const { user, loading: authLoading } = useAuth()
   
-  // Reload data when auth state changes
+  // Initialize store when auth state changes
   useEffect(() => {
-    // This will trigger a re-fetch from Supabase when user logs in
-    // The store's initial data load happens synchronously,
-    // but we could add a refresh mechanism here if needed
-  }, [user])
+    if (!authLoading) {
+      // Reset and reinitialize when user changes (login/logout)
+      reset()
+      initialize()
+    }
+  }, [user, authLoading, initialize, reset])
 
-  if (loading) {
+  if (authLoading || isLoading) {
     return (
       <div className={styles.app}>
         <div className={styles.loading}>

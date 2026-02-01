@@ -1,114 +1,237 @@
 import { create } from 'zustand'
 import { 
   getLikedCommanders, 
-  saveLikedCommanders,
+  likeCommander as apiLikeCommander,
+  unlikeCommander as apiUnlikeCommander,
   getPreferences,
   savePreferences,
   recordSwipeAction,
   getDecks,
-  saveDecks,
+  createDeck as apiCreateDeck,
+  updateDeck as apiUpdateDeck,
+  deleteDeck as apiDeleteDeck,
 } from './api'
 
 export const useStore = create((set, get) => ({
   // ============================================
+  // Data loading state
+  // ============================================
+  isLoading: true,
+  isInitialized: false,
+  
+  // Initialize all data (call this after auth is ready)
+  initialize: async () => {
+    if (get().isInitialized) return
+    
+    try {
+      const [likedCommanders, decks, preferences] = await Promise.all([
+        getLikedCommanders(),
+        getDecks(),
+        getPreferences(),
+      ])
+      
+      set({ 
+        likedCommanders: likedCommanders || [],
+        decks: decks || [],
+        preferences: preferences || { colorFilters: ['W', 'U', 'B', 'R', 'G', 'C'] },
+        isLoading: false,
+        isInitialized: true,
+      })
+    } catch (error) {
+      console.error('Failed to initialize store:', error)
+      set({ isLoading: false, isInitialized: true })
+    }
+  },
+  
+  // Reset store (call on logout)
+  reset: () => {
+    set({
+      likedCommanders: [],
+      decks: [],
+      preferences: { colorFilters: ['W', 'U', 'B', 'R', 'G', 'C'] },
+      activeDeckId: null,
+      isInitialized: false,
+      isLoading: true,
+    })
+  },
+
+  // ============================================
   // Liked commanders
   // ============================================
-  likedCommanders: getLikedCommanders(),
+  likedCommanders: [],
   
-  likeCommander: (commander) => {
+  likeCommander: async (commander) => {
     const { likedCommanders } = get()
-    if (likedCommanders.find(c => c.id === commander.id)) return
     
-    const updated = [commander, ...likedCommanders]
-    saveLikedCommanders(updated)
+    // Check if already liked
+    if (Array.isArray(likedCommanders) && likedCommanders.find(c => c.id === commander.id)) {
+      return
+    }
+    
+    // Optimistic update
+    const updated = [commander, ...(likedCommanders || [])]
     set({ likedCommanders: updated })
     
-    // Record for ML
-    recordSwipeAction({
-      commanderId: commander.id,
-      action: 'like',
-      timestamp: Date.now(),
-    })
+    try {
+      await apiLikeCommander(commander)
+      
+      // Record for ML
+      await recordSwipeAction({
+        commanderId: commander.id,
+        action: 'like',
+        timestamp: Date.now(),
+        commanderData: commander,
+      })
+    } catch (error) {
+      console.error('Failed to like commander:', error)
+      // Rollback on error
+      set({ likedCommanders })
+    }
   },
   
-  unlikeCommander: (commanderId) => {
-    const updated = get().likedCommanders.filter(c => c.id !== commanderId)
-    saveLikedCommanders(updated)
+  unlikeCommander: async (commanderId) => {
+    const { likedCommanders } = get()
+    const updated = (likedCommanders || []).filter(c => c.id !== commanderId)
+    
+    // Optimistic update
     set({ likedCommanders: updated })
+    
+    try {
+      await apiUnlikeCommander(commanderId)
+    } catch (error) {
+      console.error('Failed to unlike commander:', error)
+      // Rollback on error
+      set({ likedCommanders })
+    }
   },
   
-  passCommander: (commander) => {
+  passCommander: async (commander) => {
     // Record for ML (we don't store passed commanders, just the action)
-    recordSwipeAction({
-      commanderId: commander.id,
-      action: 'pass',
-      timestamp: Date.now(),
-    })
+    try {
+      await recordSwipeAction({
+        commanderId: commander.id,
+        action: 'pass',
+        timestamp: Date.now(),
+        commanderData: commander,
+      })
+    } catch (error) {
+      console.error('Failed to record pass:', error)
+    }
   },
 
   // ============================================
   // Filters & preferences
   // ============================================
-  preferences: getPreferences(),
+  preferences: { colorFilters: ['W', 'U', 'B', 'R', 'G', 'C'] },
   
-  setColorFilters: (colorFilters) => {
+  setColorFilters: async (colorFilters) => {
     const preferences = { ...get().preferences, colorFilters }
-    savePreferences(preferences)
     set({ preferences })
+    
+    try {
+      await savePreferences(preferences)
+    } catch (error) {
+      console.error('Failed to save preferences:', error)
+    }
   },
   
-  toggleColorFilter: (color) => {
+  toggleColorFilter: async (color) => {
     const { preferences } = get()
     const colorFilters = preferences.colorFilters.includes(color)
       ? preferences.colorFilters.filter(c => c !== color)
       : [...preferences.colorFilters, color]
     
     const updated = { ...preferences, colorFilters }
-    savePreferences(updated)
     set({ preferences: updated })
+    
+    try {
+      await savePreferences(updated)
+    } catch (error) {
+      console.error('Failed to save preferences:', error)
+    }
   },
 
   // ============================================
   // Decks
   // ============================================
-  decks: getDecks(),
+  decks: [],
   activeDeckId: null,
   
-  createDeck: (commander, cards = []) => {
+  createDeck: async (commander, cards = []) => {
     const { decks } = get()
-    const newDeck = {
-      id: `deck-${Date.now()}`,
+    
+    // Create temp deck for optimistic UI
+    const tempDeck = {
+      id: `temp-${Date.now()}`,
       name: `${commander.name} Deck`,
       commander,
       cards,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     }
-    const updated = [newDeck, ...decks]
-    saveDecks(updated)
-    set({ decks: updated, activeDeckId: newDeck.id, view: 'deckbuilder' })
-    return newDeck.id
+    
+    set({ 
+      decks: [tempDeck, ...decks], 
+      activeDeckId: tempDeck.id, 
+      view: 'deckbuilder' 
+    })
+    
+    try {
+      const newId = await apiCreateDeck(commander, cards)
+      
+      // Replace temp deck with real one
+      set(state => ({
+        decks: state.decks.map(d => 
+          d.id === tempDeck.id ? { ...d, id: newId } : d
+        ),
+        activeDeckId: newId,
+      }))
+      
+      return newId
+    } catch (error) {
+      console.error('Failed to create deck:', error)
+      // Rollback
+      set({ decks, activeDeckId: null, view: 'decks' })
+      return null
+    }
   },
   
-  updateDeck: (deckId, updates) => {
-    const updated = get().decks.map(d => 
+  updateDeck: async (deckId, updates) => {
+    const { decks } = get()
+    const updated = decks.map(d => 
       d.id === deckId 
         ? { ...d, ...updates, updatedAt: Date.now() }
         : d
     )
-    saveDecks(updated)
+    
+    // Optimistic update
     set({ decks: updated })
+    
+    try {
+      await apiUpdateDeck(deckId, updates)
+    } catch (error) {
+      console.error('Failed to update deck:', error)
+      set({ decks })
+    }
   },
   
-  deleteDeck: (deckId) => {
-    const { decks, activeDeckId } = get()
+  deleteDeck: async (deckId) => {
+    const { decks, activeDeckId, view } = get()
     const updated = decks.filter(d => d.id !== deckId)
-    saveDecks(updated)
+    
+    // Optimistic update
     set({ 
       decks: updated,
       activeDeckId: activeDeckId === deckId ? null : activeDeckId,
-      view: activeDeckId === deckId ? 'decks' : get().view,
+      view: activeDeckId === deckId ? 'decks' : view,
     })
+    
+    try {
+      await apiDeleteDeck(deckId)
+    } catch (error) {
+      console.error('Failed to delete deck:', error)
+      set({ decks, activeDeckId, view })
+    }
   },
   
   setActiveDeck: (deckId) => {
@@ -117,10 +240,10 @@ export const useStore = create((set, get) => ({
   
   getActiveDeck: () => {
     const { decks, activeDeckId } = get()
-    return decks.find(d => d.id === activeDeckId) || null
+    return (decks || []).find(d => d.id === activeDeckId) || null
   },
   
-  addCardToDeck: (deckId, card) => {
+  addCardToDeck: async (deckId, card) => {
     const { decks } = get()
     const deck = decks.find(d => d.id === deckId)
     if (!deck) return false
@@ -136,24 +259,18 @@ export const useStore = create((set, get) => ({
       return false // Deck full
     }
     
-    const updated = decks.map(d =>
-      d.id === deckId
-        ? { ...d, cards: [...d.cards, card], updatedAt: Date.now() }
-        : d
-    )
-    saveDecks(updated)
-    set({ decks: updated })
+    const updatedCards = [...deck.cards, card]
+    await get().updateDeck(deckId, { cards: updatedCards })
     return true
   },
   
-  removeCardFromDeck: (deckId, cardId) => {
-    const updated = get().decks.map(d =>
-      d.id === deckId
-        ? { ...d, cards: d.cards.filter(c => c.id !== cardId), updatedAt: Date.now() }
-        : d
-    )
-    saveDecks(updated)
-    set({ decks: updated })
+  removeCardFromDeck: async (deckId, cardId) => {
+    const { decks } = get()
+    const deck = decks.find(d => d.id === deckId)
+    if (!deck) return
+    
+    const updatedCards = deck.cards.filter(c => c.id !== cardId)
+    await get().updateDeck(deckId, { cards: updatedCards })
   },
 
   // ============================================
