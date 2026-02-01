@@ -1,157 +1,174 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useStore } from '../store'
-import { searchCards } from '../api'
-import { ColorIdentity } from '../components/ColorPip'
 import { CardSearch } from '../components/CardSearch'
-import { DeckList } from '../components/DeckList'
-import { DeckStats } from '../components/DeckStats'
+import { ColorIdentity } from '../components/ColorPip'
 import styles from './DeckBuilder.module.css'
 
 export function DeckBuilder() {
-  const decks = useStore(s => s.decks)
-  const activeDeckId = useStore(s => s.activeDeckId)
-  const updateDeck = useStore(s => s.updateDeck)
+  const deck = useStore(s => s.getActiveDeck())
   const addCardToDeck = useStore(s => s.addCardToDeck)
   const removeCardFromDeck = useStore(s => s.removeCardFromDeck)
-  const setView = useStore(s => s.setView)
-  
-  const deck = useMemo(() => 
-    decks.find(d => d.id === activeDeckId),
-    [decks, activeDeckId]
-  )
-  
-  const [isEditingName, setIsEditingName] = useState(false)
-  const [nameInput, setNameInput] = useState('')
-  const [activeTab, setActiveTab] = useState('cards') // 'cards' | 'stats'
-  
+  const updateDeck = useStore(s => s.updateDeck)
+
+  const stats = useMemo(() => {
+    if (!deck) return null
+    
+    const cards = deck.cards || []
+    const creatures = cards.filter(c => c.typeLine?.includes('Creature')).length
+    const instants = cards.filter(c => c.typeLine?.includes('Instant')).length
+    const sorceries = cards.filter(c => c.typeLine?.includes('Sorcery')).length
+    const artifacts = cards.filter(c => c.typeLine?.includes('Artifact')).length
+    const enchantments = cards.filter(c => c.typeLine?.includes('Enchantment')).length
+    const lands = cards.filter(c => c.typeLine?.includes('Land')).length
+    const other = cards.length - creatures - instants - sorceries - artifacts - enchantments - lands
+    
+    const totalPrice = cards.reduce((sum, c) => sum + (parseFloat(c.priceUsd) || 0), 0)
+    const avgCmc = cards.length > 0 
+      ? cards.reduce((sum, c) => sum + (c.cmc || 0), 0) / cards.length 
+      : 0
+
+    return {
+      total: cards.length,
+      creatures,
+      instants,
+      sorceries,
+      artifacts,
+      enchantments,
+      lands,
+      other,
+      totalPrice,
+      avgCmc,
+    }
+  }, [deck])
+
   if (!deck) {
     return (
       <div className={styles.empty}>
         <p>No deck selected</p>
-        <button onClick={() => setView('decks')} className={styles.backBtn}>
-          View All Decks
-        </button>
       </div>
     )
   }
-  
-  const cardCount = deck.cards.length + 1 // +1 for commander
-  
-  const handleNameClick = () => {
-    setNameInput(deck.name)
-    setIsEditingName(true)
-  }
-  
-  const handleNameSave = () => {
-    if (nameInput.trim()) {
-      updateDeck(deck.id, { name: nameInput.trim() })
+
+  const handleAddCard = async (card) => {
+    const success = await addCardToDeck(deck.id, card)
+    if (!success) {
+      // Could show a toast here
+      console.log('Card already in deck or deck is full')
     }
-    setIsEditingName(false)
   }
-  
-  const handleNameKeyDown = (e) => {
-    if (e.key === 'Enter') handleNameSave()
-    if (e.key === 'Escape') setIsEditingName(false)
-  }
-  
-  const handleAddCard = (card) => {
-    const added = addCardToDeck(deck.id, card)
-    return added
-  }
-  
+
   const handleRemoveCard = (cardId) => {
     removeCardFromDeck(deck.id, cardId)
   }
 
+  // Group cards by type
+  const groupedCards = useMemo(() => {
+    const cards = deck.cards || []
+    const groups = {
+      Creature: [],
+      Instant: [],
+      Sorcery: [],
+      Artifact: [],
+      Enchantment: [],
+      Land: [],
+      Other: [],
+    }
+    
+    cards.forEach(card => {
+      const type = card.typeLine || ''
+      if (type.includes('Creature')) groups.Creature.push(card)
+      else if (type.includes('Instant')) groups.Instant.push(card)
+      else if (type.includes('Sorcery')) groups.Sorcery.push(card)
+      else if (type.includes('Artifact')) groups.Artifact.push(card)
+      else if (type.includes('Enchantment')) groups.Enchantment.push(card)
+      else if (type.includes('Land')) groups.Land.push(card)
+      else groups.Other.push(card)
+    })
+    
+    return groups
+  }, [deck.cards])
+
   return (
     <div className={styles.container}>
-      {/* Header */}
+      {/* Commander header */}
       <div className={styles.header}>
-        <button 
-          className={styles.backBtn}
-          onClick={() => setView('decks')}
-        >
-          ← Decks
-        </button>
-        
-        <div className={styles.deckInfo}>
-          {isEditingName ? (
-            <input
-              type="text"
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              onBlur={handleNameSave}
-              onKeyDown={handleNameKeyDown}
-              className={styles.nameInput}
-              autoFocus
-            />
-          ) : (
-            <h1 
-              className={styles.deckName}
-              onClick={handleNameClick}
-              title="Click to edit"
-            >
-              {deck.name}
-            </h1>
-          )}
-          <span className={styles.cardCount}>{cardCount}/100</span>
-        </div>
-      </div>
-      
-      {/* Commander display */}
-      <div className={styles.commander}>
         <img 
-          src={deck.commander.image}
-          alt={deck.commander.name}
-          className={styles.commanderImg}
+          src={deck.commander?.image || deck.commander?.imageLarge} 
+          alt={deck.commander?.name}
+          className={styles.commanderImage}
         />
-        <div className={styles.commanderInfo}>
-          <span className={styles.commanderLabel}>Commander</span>
-          <h2 className={styles.commanderName}>{deck.commander.name}</h2>
-          <ColorIdentity colors={deck.commander.colorIdentity} size="sm" />
+        <div className={styles.headerInfo}>
+          <h1 className={styles.deckName}>{deck.name}</h1>
+          <div className={styles.headerMeta}>
+            <ColorIdentity colors={deck.commander?.colorIdentity} size="small" />
+            <span className={styles.cardCount}>{stats?.total || 0}/99 cards</span>
+          </div>
         </div>
       </div>
-      
-      {/* Tab navigation */}
-      <div className={styles.tabs}>
-        <button
-          className={`${styles.tab} ${activeTab === 'cards' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('cards')}
-        >
-          Cards
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'stats' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('stats')}
-        >
-          Stats
-        </button>
+
+      {/* Search */}
+      <div className={styles.search}>
+        <CardSearch 
+          onSelect={handleAddCard}
+          placeholder="Add cards to deck..."
+        />
       </div>
-      
-      {/* Tab content */}
-      {activeTab === 'cards' ? (
-        <>
-          {/* Card search */}
-          <CardSearch 
-            colorIdentity={deck.commander.colorIdentity}
-            onAddCard={handleAddCard}
-            deckCards={deck.cards}
-          />
-          
-          {/* Deck list */}
-          <DeckList 
-            cards={deck.cards}
-            onRemoveCard={handleRemoveCard}
-          />
-        </>
-      ) : (
-        <div className={styles.statsContainer}>
-          <DeckStats 
-            cards={deck.cards}
-            commander={deck.commander}
-          />
+
+      {/* Stats bar */}
+      {stats && stats.total > 0 && (
+        <div className={styles.stats}>
+          <div className={styles.stat}>
+            <span className={styles.statValue}>${stats.totalPrice.toFixed(0)}</span>
+            <span className={styles.statLabel}>Total</span>
+          </div>
+          <div className={styles.stat}>
+            <span className={styles.statValue}>{stats.avgCmc.toFixed(1)}</span>
+            <span className={styles.statLabel}>Avg CMC</span>
+          </div>
+          <div className={styles.stat}>
+            <span className={styles.statValue}>{stats.creatures}</span>
+            <span className={styles.statLabel}>Creatures</span>
+          </div>
+          <div className={styles.stat}>
+            <span className={styles.statValue}>{stats.lands}</span>
+            <span className={styles.statLabel}>Lands</span>
+          </div>
         </div>
       )}
+
+      {/* Card list */}
+      <div className={styles.cardList}>
+        {Object.entries(groupedCards).map(([type, cards]) => 
+          cards.length > 0 && (
+            <div key={type} className={styles.group}>
+              <h3 className={styles.groupTitle}>
+                {type} ({cards.length})
+              </h3>
+              <div className={styles.groupCards}>
+                {cards.map(card => (
+                  <div key={card.id} className={styles.card}>
+                    <span className={styles.cardName}>{card.name}</span>
+                    <span className={styles.cardMana}>{card.manaCost?.replace(/[{}]/g, '')}</span>
+                    <button 
+                      className={styles.removeBtn}
+                      onClick={() => handleRemoveCard(card.id)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        )}
+
+        {stats?.total === 0 && (
+          <div className={styles.emptyList}>
+            <p>No cards yet</p>
+            <p className={styles.emptyHint}>Search above to add cards</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
