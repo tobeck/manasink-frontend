@@ -6,6 +6,14 @@
   position: relative;
 }
 
+/* Desktop: center swipe area with max width */
+@media (min-width: 768px) {
+  .container {
+    max-width: 500px;
+    margin: 0 auto;
+  }
+}
+
 .cardArea {
   flex: 1;
   display: flex;

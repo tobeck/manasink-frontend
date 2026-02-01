@@ -4,10 +4,47 @@
   padding: 8px 16px 16px;
 }
 
+/* Desktop: center content with max width */
+@media (min-width: 768px) {
+  .container {
+    padding: 16px 24px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .container > div {
+    max-width: 900px;
+    width: 100%;
+  }
+}
+
+@media (min-width: 1200px) {
+  .container > div {
+    max-width: 1200px;
+  }
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+}
+
+/* Tablet: 3 columns */
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+}
+
+/* Desktop: 4 columns */
+@media (min-width: 1200px) {
+  .grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
 }
 
 .card {
@@ -51,6 +88,17 @@
 .removeBtn:hover {
   background: var(--color-pass);
   color: #fff;
+}
+
+/* Desktop: always show remove button with subtle opacity */
+@media (min-width: 768px) {
+  .removeBtn {
+    opacity: 0.6;
+  }
+
+  .card:hover .removeBtn {
+    opacity: 1;
+  }
 }
 
 .info {

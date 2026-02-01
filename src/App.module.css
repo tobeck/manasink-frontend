@@ -7,6 +7,13 @@
   background: var(--bg-primary);
 }
 
+/* Desktop: allow full width for list views, keep centered for swipe */
+@media (min-width: 768px) {
+  .app {
+    max-width: 100%;
+  }
+}
+
 .main {
   flex: 1;
   overflow: hidden;

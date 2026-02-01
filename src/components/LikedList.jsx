@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useStore } from '../store'
 import { useShallow } from 'zustand/react/shallow'
@@ -7,6 +7,31 @@ import { BootstrapModal } from './BootstrapModal'
 import { trackEvent } from '../lib/analytics'
 import { ALLOWED_DOMAINS } from '../constants'
 import styles from './LikedList.module.css'
+
+/**
+ * Hook to detect number of columns based on screen width
+ */
+function useColumns() {
+  const [columns, setColumns] = useState(() => {
+    if (typeof window === 'undefined') return 2
+    if (window.innerWidth >= 1200) return 4
+    if (window.innerWidth >= 768) return 3
+    return 2
+  })
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1200) setColumns(4)
+      else if (window.innerWidth >= 768) setColumns(3)
+      else setColumns(2)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  return columns
+}
 
 /**
  * Validates a URL is safe to use as an external link.
@@ -36,17 +61,21 @@ export function LikedList() {
   const [buildingCommander, setBuildingCommander] = useState(null)
   const [expandedBuy, setExpandedBuy] = useState(null)
   const parentRef = useRef(null)
+  const columns = useColumns()
 
-  // Group commanders into rows of 2 for virtualization
+  // Group commanders into rows based on column count
   const rows = []
-  for (let i = 0; i < likedCommanders.length; i += 2) {
-    rows.push(likedCommanders.slice(i, i + 2))
+  for (let i = 0; i < likedCommanders.length; i += columns) {
+    rows.push(likedCommanders.slice(i, i + columns))
   }
+
+  // Estimate row height based on screen size (cards are taller on larger screens)
+  const estimatedRowHeight = columns === 2 ? 340 : columns === 3 ? 380 : 400
 
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: useCallback(() => 340, []), // Estimated row height
+    estimateSize: useCallback(() => estimatedRowHeight, [estimatedRowHeight]),
     overscan: 2,
   })
 
@@ -90,6 +119,8 @@ export function LikedList() {
                 left: 0,
                 width: '100%',
                 transform: `translateY(${virtualRow.start}px)`,
+                // Higher rows get higher z-index to prevent overlap issues
+                zIndex: rows.length - virtualRow.index,
               }}
             >
               {rowCommanders.map(commander => (
