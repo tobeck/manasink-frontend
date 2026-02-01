@@ -81,7 +81,7 @@
 }
 
 .buildBtn {
-  margin: 0 12px 12px;
+  flex: 1;
   padding: 10px;
   border: none;
   border-radius: var(--radius-sm);
@@ -94,6 +94,72 @@
 
 .buildBtn:hover {
   background: var(--accent);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.buyBtn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+
+.buyBtn:hover {
+  background: var(--color-like);
+  color: #fff;
+}
+
+.buyBtn.active {
+  background: var(--color-like);
+  color: #fff;
+}
+
+.buyOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 12px 12px;
+  border-top: 1px solid var(--bg-elevated);
+  padding-top: 12px;
+  margin-top: -4px;
+}
+
+.buyOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: background var(--transition-fast);
+}
+
+.buyOption:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.buyName {
+  flex: 1;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.buyPrice {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-like);
 }
 
 /* Empty state */

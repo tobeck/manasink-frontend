@@ -8,6 +8,7 @@ export function LikedList() {
   const likedCommanders = useStore(s => s.likedCommanders)
   const unlikeCommander = useStore(s => s.unlikeCommander)
   const [buildingCommander, setBuildingCommander] = useState(null)
+  const [expandedBuy, setExpandedBuy] = useState(null)
 
   if (likedCommanders.length === 0) {
     return (
@@ -17,6 +18,10 @@ export function LikedList() {
         <p>Swipe right on commanders you want to build with</p>
       </div>
     )
+  }
+
+  const toggleBuy = (commanderId) => {
+    setExpandedBuy(expandedBuy === commanderId ? null : commanderId)
   }
 
   return (
@@ -51,12 +56,24 @@ export function LikedList() {
               </div>
             </div>
             
-            <button
-              className={styles.buildBtn}
-              onClick={() => setBuildingCommander(commander)}
-            >
-              Build Deck
-            </button>
+            <div className={styles.actions}>
+              <button
+                className={styles.buildBtn}
+                onClick={() => setBuildingCommander(commander)}
+              >
+                Build
+              </button>
+              <button
+                className={`${styles.buyBtn} ${expandedBuy === commander.id ? styles.active : ''}`}
+                onClick={() => toggleBuy(commander.id)}
+              >
+                Buy ▾
+              </button>
+            </div>
+
+            {expandedBuy === commander.id && (
+              <BuyOptions commander={commander} />
+            )}
           </div>
         ))}
       </div>
@@ -67,6 +84,48 @@ export function LikedList() {
           onClose={() => setBuildingCommander(null)}
         />
       )}
+    </div>
+  )
+}
+
+function BuyOptions({ commander }) {
+  const { purchaseUris, priceUsd, priceEur } = commander
+  
+  // Construct CardKingdom search URL
+  const cardKingdomUrl = `https://www.cardkingdom.com/catalog/search?search=header&filter%5Bname%5D=${encodeURIComponent(commander.name)}`
+  
+  const options = [
+    {
+      name: 'TCGPlayer',
+      url: purchaseUris?.tcgplayer,
+      price: priceUsd ? `$${parseFloat(priceUsd).toFixed(2)}` : null,
+    },
+    {
+      name: 'CardKingdom',
+      url: cardKingdomUrl,
+      price: null,
+    },
+    {
+      name: 'Cardmarket',
+      url: purchaseUris?.cardmarket,
+      price: priceEur ? `€${parseFloat(priceEur).toFixed(2)}` : null,
+    },
+  ]
+
+  return (
+    <div className={styles.buyOptions}>
+      {options.map(option => (
+        <a
+          key={option.name}
+          href={option.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.buyOption}
+        >
+          <span className={styles.buyName}>{option.name}</span>
+          {option.price && <span className={styles.buyPrice}>{option.price}</span>}
+        </a>
+      ))}
     </div>
   )
 }
