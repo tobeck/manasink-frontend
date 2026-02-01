@@ -1,19 +1,12 @@
 import { useSwipeGesture } from '../hooks/useSwipeGesture'
-import { ColorIdentity } from './ColorPip'
 import styles from './SwipeCard.module.css'
 
 // Haptic feedback helper
 function triggerHaptic(style = 'light') {
   if (navigator.vibrate) {
-    // Android
-    const patterns = {
-      light: 10,
-      medium: 20,
-      heavy: 30,
-    }
+    const patterns = { light: 10, medium: 20, heavy: 30 }
     navigator.vibrate(patterns[style] || 10)
   }
-  // iOS - no direct API, but some browsers support it via AudioContext
 }
 
 export function SwipeCard({ 
@@ -22,7 +15,7 @@ export function SwipeCard({
   onPass, 
   isAnimating, 
   animationDirection,
-  nextCommander, // for preloading
+  nextCommander,
 }) {
   const handleSwipeRight = () => {
     triggerHaptic('medium')
@@ -52,47 +45,54 @@ export function SwipeCard({
       }
     : style
 
+  // Format price
+  const price = commander.priceUsd 
+    ? `$${parseFloat(commander.priceUsd).toFixed(2)}`
+    : null
+
   return (
-    <div className={styles.card} style={animStyle} {...handlers}>
-      <img
-        className={styles.image}
-        src={commander.imageLarge}
-        alt={commander.name}
-        draggable={false}
-      />
-      
-      {/* Preload next card image */}
-      {nextCommander && (
-        <link rel="preload" as="image" href={nextCommander.imageLarge} />
-      )}
-      
-      {/* Swipe indicators - LIKE on left (shows when swiping right), PASS on right */}
-      <div 
-        className={`${styles.indicator} ${styles.like}`}
-        style={{ opacity: Math.max(0, swipeProgress) }}
-      >
-        LIKE
+    <div className={styles.cardContainer}>
+      <div className={styles.card} style={animStyle} {...handlers}>
+        <img
+          className={styles.image}
+          src={commander.imageLarge}
+          alt={commander.name}
+          draggable={false}
+        />
+        
+        {/* Preload next card image */}
+        {nextCommander && (
+          <link rel="preload" as="image" href={nextCommander.imageLarge} />
+        )}
+        
+        {/* Swipe indicators - LIKE on left (shows when swiping right), PASS on right */}
+        <div 
+          className={`${styles.indicator} ${styles.like}`}
+          style={{ opacity: Math.max(0, swipeProgress) }}
+        >
+          LIKE
+        </div>
+        <div 
+          className={`${styles.indicator} ${styles.pass}`}
+          style={{ opacity: Math.max(0, -swipeProgress) }}
+        >
+          PASS
+        </div>
       </div>
-      <div 
-        className={`${styles.indicator} ${styles.pass}`}
-        style={{ opacity: Math.max(0, -swipeProgress) }}
-      >
-        PASS
-      </div>
       
-      {/* Card info overlay */}
-      <div className={styles.overlay}>
-        <h2 className={styles.name}>{commander.name}</h2>
-        <p className={styles.type}>{commander.typeLine}</p>
-        <ColorIdentity colors={commander.colorIdentity} />
+      {/* Card info below the card */}
+      <div className={styles.cardInfo}>
         <a 
-          className={styles.link}
+          className={styles.scryfallLink}
           href={commander.scryfallUri}
           target="_blank"
           rel="noopener noreferrer"
         >
           View on Scryfall ↗
         </a>
+        {price && (
+          <span className={styles.price}>{price}</span>
+        )}
       </div>
     </div>
   )
@@ -100,10 +100,12 @@ export function SwipeCard({
 
 export function LoadingCard() {
   return (
-    <div className={styles.card}>
-      <div className={styles.loadingContent}>
-        <div className={styles.spinner} />
-        <p>Finding commanders...</p>
+    <div className={styles.cardContainer}>
+      <div className={styles.card}>
+        <div className={styles.loadingContent}>
+          <div className={styles.spinner} />
+          <p>Finding commanders...</p>
+        </div>
       </div>
     </div>
   )
@@ -111,13 +113,15 @@ export function LoadingCard() {
 
 export function ErrorCard({ message, onRetry }) {
   return (
-    <div className={styles.card}>
-      <div className={styles.loadingContent}>
-        <span className={styles.errorIcon}>😕</span>
-        <p>{message || 'Something went wrong'}</p>
-        <button className={styles.retryBtn} onClick={onRetry}>
-          Try Again
-        </button>
+    <div className={styles.cardContainer}>
+      <div className={styles.card}>
+        <div className={styles.loadingContent}>
+          <span className={styles.errorIcon}>😕</span>
+          <p>{message || 'Something went wrong'}</p>
+          <button className={styles.retryBtn} onClick={onRetry}>
+            Try Again
+          </button>
+        </div>
       </div>
     </div>
   )

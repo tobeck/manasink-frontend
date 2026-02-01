@@ -37,6 +37,9 @@ async function rateLimitedFetch(url) {
 export function transformCard(card) {
   const imageUris = card.image_uris || card.card_faces?.[0]?.image_uris || {}
   
+  // Get prices (Scryfall provides USD, EUR, TIX)
+  const prices = card.prices || {}
+  
   return {
     id: card.id,
     name: card.name,
@@ -54,6 +57,11 @@ export function transformCard(card) {
     keywords: card.keywords || [],
     rarity: card.rarity,
     setName: card.set_name,
+    // Price data
+    priceUsd: prices.usd || null,
+    priceUsdFoil: prices.usd_foil || null,
+    priceEur: prices.eur || null,
+    purchaseUris: card.purchase_uris || {},
   }
 }
 
@@ -197,8 +205,11 @@ export async function getLikedCommanders() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
       
-      if (error) throw error
-      return data.map(row => row.commander_data)
+      if (error) {
+        console.error('Error fetching liked commanders:', error)
+        return getStorage(STORAGE_KEYS.LIKED, [])
+      }
+      return (data || []).map(row => row.commander_data)
     }
   }
   return getStorage(STORAGE_KEYS.LIKED, [])
@@ -215,13 +226,17 @@ export async function likeCommander(commander) {
     if (user) {
       const { error } = await supabase
         .from('liked_commanders')
-        .upsert({
+        .insert({
           user_id: user.id,
           commander_id: commander.id,
           commander_data: commander,
-        }, { onConflict: 'user_id,commander_id' })
+        })
       
-      if (error) throw error
+      // Ignore duplicate errors (code 23505)
+      if (error && error.code !== '23505') {
+        console.error('Error liking commander:', error)
+        throw error
+      }
       return
     }
   }
@@ -267,8 +282,11 @@ export async function getDecks() {
         .eq('user_id', user.id)
         .order('updated_at', { ascending: false })
       
-      if (error) throw error
-      return data.map(row => ({
+      if (error) {
+        console.error('Error fetching decks:', error)
+        return getStorage(STORAGE_KEYS.DECKS, [])
+      }
+      return (data || []).map(row => ({
         id: row.id,
         name: row.name,
         commander: row.commander_data,

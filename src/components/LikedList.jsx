@@ -7,72 +7,64 @@ import styles from './LikedList.module.css'
 export function LikedList() {
   const likedCommanders = useStore(s => s.likedCommanders)
   const unlikeCommander = useStore(s => s.unlikeCommander)
-  const createDeck = useStore(s => s.createDeck)
-  const setView = useStore(s => s.setView)
-  
-  const [selectedCommander, setSelectedCommander] = useState(null)
-
-  const handleBuildDeck = (commander) => {
-    setSelectedCommander(commander)
-  }
-  
-  const handleConfirmBuild = (cards) => {
-    if (selectedCommander) {
-      createDeck(selectedCommander, cards)
-    }
-    setSelectedCommander(null)
-  }
+  const [buildingCommander, setBuildingCommander] = useState(null)
 
   if (likedCommanders.length === 0) {
     return (
       <div className={styles.empty}>
         <span className={styles.emptyIcon}>💔</span>
-        <p>No liked commanders yet</p>
-        <p className={styles.emptyHint}>Swipe right on commanders you like!</p>
-        <button className={styles.discoverBtn} onClick={() => setView('swipe')}>
-          Start Discovering
-        </button>
+        <h2>No liked commanders yet</h2>
+        <p>Swipe right on commanders you like to add them here</p>
       </div>
     )
   }
 
   return (
     <div className={styles.container}>
-      <h2 className={styles.title}>
-        Liked Commanders 
-        <span className={styles.count}>({likedCommanders.length})</span>
-      </h2>
+      <div className={styles.header}>
+        <h2 className={styles.title}>Liked Commanders</h2>
+        <span className={styles.count}>{likedCommanders.length}</span>
+      </div>
       
       <div className={styles.list}>
         {likedCommanders.map(commander => (
           <div key={commander.id} className={styles.card}>
-            <img
-              src={commander.image}
+            <img 
+              src={commander.image || commander.imageLarge} 
               alt={commander.name}
-              className={styles.thumb}
-              loading="lazy"
+              className={styles.image}
             />
+            
             <div className={styles.info}>
               <h3 className={styles.name}>{commander.name}</h3>
-              <ColorIdentity colors={commander.colorIdentity} size="sm" />
+              <p className={styles.type}>{commander.typeLine}</p>
+              <ColorIdentity colors={commander.colorIdentity} size="small" />
+              
+              <div className={styles.meta}>
+                {commander.priceUsd && (
+                  <span className={styles.price}>
+                    ${parseFloat(commander.priceUsd).toFixed(2)}
+                  </span>
+                )}
+                <a 
+                  href={commander.scryfallUri}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.scryfallLink}
+                >
+                  Scryfall ↗
+                </a>
+              </div>
             </div>
+            
             <div className={styles.actions}>
               <button
                 className={styles.buildBtn}
-                onClick={() => handleBuildDeck(commander)}
+                onClick={() => setBuildingCommander(commander)}
                 title="Build deck"
               >
                 Build
               </button>
-              <a
-                href={commander.scryfallUri}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.linkBtn}
-                title="View on Scryfall"
-              >
-                ↗
-              </a>
               <button
                 className={styles.removeBtn}
                 onClick={() => unlikeCommander(commander.id)}
@@ -84,13 +76,13 @@ export function LikedList() {
           </div>
         ))}
       </div>
-      
-      <BootstrapModal
-        commander={selectedCommander}
-        isOpen={!!selectedCommander}
-        onClose={() => setSelectedCommander(null)}
-        onConfirm={handleConfirmBuild}
-      />
+
+      {buildingCommander && (
+        <BootstrapModal
+          commander={buildingCommander}
+          onClose={() => setBuildingCommander(null)}
+        />
+      )}
     </div>
   )
 }
