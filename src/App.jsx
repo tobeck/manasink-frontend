@@ -7,6 +7,7 @@ import { SwipeView } from './pages/SwipeView'
 import { LikedList } from './components/LikedList'
 import { DecksView } from './pages/DecksView'
 import { DeckBuilder } from './pages/DeckBuilder'
+import { AdminPage } from './pages/AdminPage'
 import styles from './App.module.css'
 
 function AppContent() {
@@ -33,7 +34,7 @@ function AppContent() {
     )
   }
 
-  const showBottomNav = view !== 'deckbuilder'
+  const showBottomNav = view !== 'deckbuilder' && view !== 'admin'
 
   return (
     <div className={styles.app}>
@@ -43,6 +44,7 @@ function AppContent() {
         {view === 'liked' && <LikedList />}
         {view === 'decks' && <DecksView />}
         {view === 'deckbuilder' && <DeckBuilder />}
+        {view === 'admin' && <AdminPage />}
       </main>
       {showBottomNav && <BottomNav />}
     </div>

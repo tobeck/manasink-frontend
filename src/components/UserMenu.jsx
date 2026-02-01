@@ -1,11 +1,31 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useStore } from '../store'
+import { supabase } from '../lib/supabase'
 import styles from './UserMenu.module.css'
 
 export function UserMenu() {
   const { user, isAuthenticated, isConfigured, loading, signInWithGitHub, signInWithGoogle, signOut } = useAuth()
+  const setView = useStore(s => s.setView)
   const [showDropdown, setShowDropdown] = useState(false)
   const [showLogin, setShowLogin] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  // Check admin status
+  useEffect(() => {
+    async function checkAdmin() {
+      if (!user || !supabase) return
+      
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('is_admin')
+        .eq('user_id', user.id)
+        .single()
+      
+      setIsAdmin(data?.is_admin || false)
+    }
+    checkAdmin()
+  }, [user])
 
   if (loading) {
     return <div className={styles.skeleton} />
@@ -33,6 +53,11 @@ export function UserMenu() {
     )
   }
 
+  const handleAdminClick = () => {
+    setShowDropdown(false)
+    setView('admin')
+  }
+
   return (
     <div className={styles.container}>
       <button 
@@ -56,6 +81,11 @@ export function UserMenu() {
               </span>
               <span className={styles.userEmail}>{user.email}</span>
             </div>
+            {isAdmin && (
+              <button className={styles.menuItem} onClick={handleAdminClick}>
+                📊 Admin Dashboard
+              </button>
+            )}
             <button className={styles.signOutBtn} onClick={signOut}>
               Sign out
             </button>

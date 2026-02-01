@@ -8,13 +8,24 @@ export function Header() {
   const setView = useStore(s => s.setView)
   const { isAuthenticated } = useAuth()
 
-  // Show back button in deck builder
+  // Show back button in deck builder or admin
   if (view === 'deckbuilder') {
     return (
       <header className={styles.header}>
         <button className={styles.backBtn} onClick={() => setView('decks')}>
           <ChevronLeft />
           <span>Decks</span>
+        </button>
+      </header>
+    )
+  }
+
+  if (view === 'admin') {
+    return (
+      <header className={styles.header}>
+        <button className={styles.backBtn} onClick={() => setView('swipe')}>
+          <ChevronLeft />
+          <span>Back</span>
         </button>
       </header>
     )
