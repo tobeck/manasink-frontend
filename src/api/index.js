@@ -1,37 +1,37 @@
 /**
  * API Layer
- * 
+ *
  * Data operations for Manasink.
  * Uses Supabase when configured, falls back to localStorage.
  */
 
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { SCRYFALL_API, MIN_REQUEST_INTERVAL, STORAGE_KEYS } from '../constants'
 
 // ============================================
 // Scryfall API (card data)
 // ============================================
 
-const SCRYFALL_API = 'https://api.scryfall.com'
-
-let lastRequestTime = 0
-const MIN_REQUEST_INTERVAL = 100
+// Request queue to prevent race conditions in rate limiting
+let requestQueue = Promise.resolve()
 
 async function rateLimitedFetch(url) {
-  const now = Date.now()
-  const timeSinceLastRequest = now - lastRequestTime
-  
-  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
-    await new Promise(r => setTimeout(r, MIN_REQUEST_INTERVAL - timeSinceLastRequest))
+  // Chain this request onto the queue to ensure sequential execution
+  const executeRequest = async () => {
+    await new Promise(r => setTimeout(r, MIN_REQUEST_INTERVAL))
+
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      throw new Error(`Scryfall API error: ${response.status}`)
+    }
+
+    return response.json()
   }
-  
-  lastRequestTime = Date.now()
-  const response = await fetch(url)
-  
-  if (!response.ok) {
-    throw new Error(`Scryfall API error: ${response.status}`)
-  }
-  
-  return response.json()
+
+  // Add to queue and return result
+  requestQueue = requestQueue.then(executeRequest, executeRequest)
+  return requestQueue
 }
 
 export function transformCard(card) {
@@ -132,13 +132,6 @@ export async function fetchCardsByNames(names) {
 // localStorage helpers
 // ============================================
 
-const STORAGE_KEYS = {
-  LIKED: 'manasink:liked',
-  DECKS: 'manasink:decks',
-  HISTORY: 'manasink:history',
-  PREFERENCES: 'manasink:preferences',
-}
-
 function getStorage(key, fallback) {
   try {
     const data = localStorage.getItem(key)
@@ -149,7 +142,24 @@ function getStorage(key, fallback) {
 }
 
 function setStorage(key, value) {
-  localStorage.setItem(key, JSON.stringify(value))
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch (error) {
+    // Handle quota exceeded errors
+    if (error.name === 'QuotaExceededError' || error.code === 22) {
+      console.warn('localStorage quota exceeded, clearing old history')
+      try {
+        // Try to free space by clearing history
+        localStorage.removeItem(STORAGE_KEYS.HISTORY)
+        // Retry the save
+        localStorage.setItem(key, JSON.stringify(value))
+      } catch {
+        console.error('Failed to save to localStorage even after cleanup')
+      }
+    } else {
+      console.error('localStorage error:', error)
+    }
+  }
 }
 
 // ============================================

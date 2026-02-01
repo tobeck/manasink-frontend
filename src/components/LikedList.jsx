@@ -1,15 +1,54 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { ColorIdentity } from './ColorPip'
 import { BootstrapModal } from './BootstrapModal'
 import { trackEvent } from '../lib/analytics'
+import { ALLOWED_DOMAINS } from '../constants'
 import styles from './LikedList.module.css'
 
+/**
+ * Validates a URL is safe to use as an external link.
+ * Must be HTTPS and from an allowed domain.
+ */
+function isValidUrl(url) {
+  if (!url || typeof url !== 'string') return false
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:') return false
+    const hostname = parsed.hostname.toLowerCase()
+    return ALLOWED_DOMAINS.some(
+      domain => hostname === domain || hostname.endsWith('.' + domain)
+    )
+  } catch {
+    return false
+  }
+}
+
 export function LikedList() {
-  const likedCommanders = useStore(s => s.likedCommanders)
-  const unlikeCommander = useStore(s => s.unlikeCommander)
+  const { likedCommanders, unlikeCommander } = useStore(
+    useShallow(s => ({
+      likedCommanders: s.likedCommanders,
+      unlikeCommander: s.unlikeCommander,
+    }))
+  )
   const [buildingCommander, setBuildingCommander] = useState(null)
   const [expandedBuy, setExpandedBuy] = useState(null)
+  const parentRef = useRef(null)
+
+  // Group commanders into rows of 2 for virtualization
+  const rows = []
+  for (let i = 0; i < likedCommanders.length; i += 2) {
+    rows.push(likedCommanders.slice(i, i + 2))
+  }
+
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: useCallback(() => 340, []), // Estimated row height
+    overscan: 2,
+  })
 
   if (likedCommanders.length === 0) {
     return (
@@ -24,64 +63,88 @@ export function LikedList() {
   const toggleBuy = (commanderId, commanderName) => {
     const isExpanding = expandedBuy !== commanderId
     setExpandedBuy(isExpanding ? commanderId : null)
-    
+
     if (isExpanding) {
       trackEvent('buy_expand', { commander_id: commanderId, commander_name: commanderName })
     }
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.grid}>
-        {likedCommanders.map(commander => (
-          <div key={commander.id} className={styles.card}>
-            <div className={styles.imageWrapper}>
-              <img 
-                src={commander.image || commander.imageLarge} 
-                alt={commander.name}
-                className={styles.image}
-              />
-              <button
-                className={styles.removeBtn}
-                onClick={() => unlikeCommander(commander.id)}
-                aria-label="Remove"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className={styles.info}>
-              <h3 className={styles.name}>{commander.name}</h3>
-              <div className={styles.meta}>
-                <ColorIdentity colors={commander.colorIdentity} size="small" />
-                {commander.priceUsd && (
-                  <span className={styles.price}>
-                    ${parseFloat(commander.priceUsd).toFixed(0)}
-                  </span>
-                )}
-              </div>
-            </div>
-            
-            <div className={styles.actions}>
-              <button
-                className={styles.buildBtn}
-                onClick={() => setBuildingCommander(commander)}
-              >
-                Build
-              </button>
-              <button
-                className={`${styles.buyBtn} ${expandedBuy === commander.id ? styles.active : ''}`}
-                onClick={() => toggleBuy(commander.id, commander.name)}
-              >
-                Buy ▾
-              </button>
-            </div>
+    <div ref={parentRef} className={styles.container}>
+      <div
+        style={{
+          height: `${rowVirtualizer.getTotalSize()}px`,
+          width: '100%',
+          position: 'relative',
+        }}
+      >
+        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+          const rowCommanders = rows[virtualRow.index]
+          return (
+            <div
+              key={virtualRow.key}
+              className={styles.grid}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              {rowCommanders.map(commander => (
+                <div key={commander.id} className={styles.card}>
+                  <div className={styles.imageWrapper}>
+                    <img
+                      src={commander.image || commander.imageLarge}
+                      alt={commander.name}
+                      className={styles.image}
+                      loading="lazy"
+                    />
+                    <button
+                      className={styles.removeBtn}
+                      onClick={() => unlikeCommander(commander.id)}
+                      aria-label={`Remove ${commander.name}`}
+                    >
+                      ✕
+                    </button>
+                  </div>
 
-            {expandedBuy === commander.id && (
-              <BuyOptions commander={commander} />
-            )}
-          </div>
-        ))}
+                  <div className={styles.info}>
+                    <h3 className={styles.name}>{commander.name}</h3>
+                    <div className={styles.meta}>
+                      <ColorIdentity colors={commander.colorIdentity} size="small" />
+                      {commander.priceUsd && (
+                        <span className={styles.price}>
+                          ${parseFloat(commander.priceUsd).toFixed(0)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.actions}>
+                    <button
+                      className={styles.buildBtn}
+                      onClick={() => setBuildingCommander(commander)}
+                    >
+                      Build
+                    </button>
+                    <button
+                      className={`${styles.buyBtn} ${expandedBuy === commander.id ? styles.active : ''}`}
+                      onClick={() => toggleBuy(commander.id, commander.name)}
+                    >
+                      Buy ▾
+                    </button>
+                  </div>
+
+                  {expandedBuy === commander.id && (
+                    <BuyOptions commander={commander} />
+                  )}
+                </div>
+              ))}
+            </div>
+          )
+        })}
       </div>
 
       {buildingCommander && (
@@ -128,19 +191,22 @@ function BuyOptions({ commander }) {
 
   return (
     <div className={styles.buyOptions}>
-      {options.map(option => (
-        <a
-          key={option.name}
-          href={option.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.buyOption}
-          onClick={() => handleClick(option.name)}
-        >
-          <span className={styles.buyName}>{option.name}</span>
-          {option.price && <span className={styles.buyPrice}>{option.price}</span>}
-        </a>
-      ))}
+      {options.map(option => {
+        if (!isValidUrl(option.url)) return null
+        return (
+          <a
+            key={option.name}
+            href={option.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.buyOption}
+            onClick={() => handleClick(option.name)}
+          >
+            <span className={styles.buyName}>{option.name}</span>
+            {option.price && <span className={styles.buyPrice}>{option.price}</span>}
+          </a>
+        )
+      })}
     </div>
   )
 }

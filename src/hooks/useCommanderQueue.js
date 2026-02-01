@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { fetchRandomCommander } from '../api'
-
-const QUEUE_SIZE = 3
+import { QUEUE_SIZE } from '../constants'
 
 export function useCommanderQueue(colorFilters) {
   const [queue, setQueue] = useState([])

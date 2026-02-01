@@ -8,11 +8,10 @@ export function DeckBuilder() {
   const deck = useStore(s => s.getActiveDeck())
   const addCardToDeck = useStore(s => s.addCardToDeck)
   const removeCardFromDeck = useStore(s => s.removeCardFromDeck)
-  const updateDeck = useStore(s => s.updateDeck)
 
   const stats = useMemo(() => {
     if (!deck) return null
-    
+
     const cards = deck.cards || []
     const creatures = cards.filter(c => c.typeLine?.includes('Creature')).length
     const instants = cards.filter(c => c.typeLine?.includes('Instant')).length
@@ -21,10 +20,10 @@ export function DeckBuilder() {
     const enchantments = cards.filter(c => c.typeLine?.includes('Enchantment')).length
     const lands = cards.filter(c => c.typeLine?.includes('Land')).length
     const other = cards.length - creatures - instants - sorceries - artifacts - enchantments - lands
-    
+
     const totalPrice = cards.reduce((sum, c) => sum + (parseFloat(c.priceUsd) || 0), 0)
-    const avgCmc = cards.length > 0 
-      ? cards.reduce((sum, c) => sum + (c.cmc || 0), 0) / cards.length 
+    const avgCmc = cards.length > 0
+      ? cards.reduce((sum, c) => sum + (c.cmc || 0), 0) / cards.length
       : 0
 
     return {
@@ -41,6 +40,35 @@ export function DeckBuilder() {
     }
   }, [deck])
 
+  // Group cards by type - must be called before any early returns
+  const groupedCards = useMemo(() => {
+    if (!deck) return null
+
+    const cards = deck.cards || []
+    const groups = {
+      Creature: [],
+      Instant: [],
+      Sorcery: [],
+      Artifact: [],
+      Enchantment: [],
+      Land: [],
+      Other: [],
+    }
+
+    cards.forEach(card => {
+      const type = card.typeLine || ''
+      if (type.includes('Creature')) groups.Creature.push(card)
+      else if (type.includes('Instant')) groups.Instant.push(card)
+      else if (type.includes('Sorcery')) groups.Sorcery.push(card)
+      else if (type.includes('Artifact')) groups.Artifact.push(card)
+      else if (type.includes('Enchantment')) groups.Enchantment.push(card)
+      else if (type.includes('Land')) groups.Land.push(card)
+      else groups.Other.push(card)
+    })
+
+    return groups
+  }, [deck])
+
   if (!deck) {
     return (
       <div className={styles.empty}>
@@ -52,7 +80,6 @@ export function DeckBuilder() {
   const handleAddCard = async (card) => {
     const success = await addCardToDeck(deck.id, card)
     if (!success) {
-      // Could show a toast here
       console.log('Card already in deck or deck is full')
     }
   }
@@ -60,33 +87,6 @@ export function DeckBuilder() {
   const handleRemoveCard = (cardId) => {
     removeCardFromDeck(deck.id, cardId)
   }
-
-  // Group cards by type
-  const groupedCards = useMemo(() => {
-    const cards = deck.cards || []
-    const groups = {
-      Creature: [],
-      Instant: [],
-      Sorcery: [],
-      Artifact: [],
-      Enchantment: [],
-      Land: [],
-      Other: [],
-    }
-    
-    cards.forEach(card => {
-      const type = card.typeLine || ''
-      if (type.includes('Creature')) groups.Creature.push(card)
-      else if (type.includes('Instant')) groups.Instant.push(card)
-      else if (type.includes('Sorcery')) groups.Sorcery.push(card)
-      else if (type.includes('Artifact')) groups.Artifact.push(card)
-      else if (type.includes('Enchantment')) groups.Enchantment.push(card)
-      else if (type.includes('Land')) groups.Land.push(card)
-      else groups.Other.push(card)
-    })
-    
-    return groups
-  }, [deck.cards])
 
   return (
     <div className={styles.container}>

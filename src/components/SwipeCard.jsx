@@ -54,41 +54,56 @@ export function SwipeCard({
       {nextCommander && (
         <link rel="preload" as="image" href={nextCommander.imageLarge} />
       )}
-      
-      <div className={styles.card} style={animStyle} {...handlers}>
+
+      {/* Screen reader announcement for swipe feedback */}
+      <div aria-live="polite" className="sr-only">
+        {swipeProgress > 0.5 && 'Swiping right to like'}
+        {swipeProgress < -0.5 && 'Swiping left to pass'}
+      </div>
+
+      <article
+        className={styles.card}
+        style={animStyle}
+        {...handlers}
+        role="article"
+        aria-label={`${commander.name}, ${commander.typeLine || 'Commander'}`}
+      >
         <img
           className={styles.image}
           src={commander.imageLarge}
-          alt={commander.name}
+          alt={`Card art for ${commander.name}`}
           draggable={false}
         />
-        
+
         {/* Swipe indicators */}
-        <div 
+        <div
           className={`${styles.indicator} ${styles.like}`}
           style={{ opacity: Math.max(0, swipeProgress * 1.5) }}
+          aria-hidden="true"
         >
           LIKE
         </div>
-        <div 
+        <div
           className={`${styles.indicator} ${styles.pass}`}
           style={{ opacity: Math.max(0, -swipeProgress * 1.5) }}
+          aria-hidden="true"
         >
           NOPE
         </div>
-      </div>
-      
+      </article>
+
       {/* Info below card */}
       <div className={styles.info}>
-        <a 
+        <a
           href={commander.scryfallUri}
           target="_blank"
           rel="noopener noreferrer"
           className={styles.link}
+          aria-label={`View ${commander.name} on Scryfall (opens in new tab)`}
         >
           Scryfall ↗
         </a>
-        {price && <span className={styles.price}>{price}</span>}
+        {price && <span className={styles.price} aria-label={`Price: ${price}`}>{price}</span>}
       </div>
     </div>
   )

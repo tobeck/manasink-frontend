@@ -141,7 +141,7 @@ export function AdminPage() {
       <div className={styles.container}>
         <div className={styles.unauthorized}>
           <h2>Access Denied</h2>
-          <p>You don't have permission to view this page.</p>
+          <p>You do not have permission to view this page.</p>
         </div>
       </div>
     )

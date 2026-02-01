@@ -8,6 +8,8 @@ import { LikedList } from './components/LikedList'
 import { DecksView } from './pages/DecksView'
 import { DeckBuilder } from './pages/DeckBuilder'
 import { AdminPage } from './pages/AdminPage'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { Toast } from './components/Toast'
 import styles from './App.module.css'
 
 function AppContent() {
@@ -47,14 +49,17 @@ function AppContent() {
         {view === 'admin' && <AdminPage />}
       </main>
       {showBottomNav && <BottomNav />}
+      <Toast />
     </div>
   )
 }
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }

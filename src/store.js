@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { 
-  getLikedCommanders, 
+import {
+  getLikedCommanders,
   likeCommander as apiLikeCommander,
   unlikeCommander as apiUnlikeCommander,
   getPreferences,
@@ -12,7 +12,28 @@ import {
   deleteDeck as apiDeleteDeck,
 } from './api'
 
+let notificationId = 0
+
 export const useStore = create((set, get) => ({
+  // ============================================
+  // Notifications
+  // ============================================
+  notifications: [],
+
+  addNotification: (type, message) => {
+    const id = ++notificationId
+    set(state => ({
+      notifications: [...state.notifications, { id, type, message }]
+    }))
+    return id
+  },
+
+  dismissNotification: (id) => {
+    set(state => ({
+      notifications: state.notifications.filter(n => n.id !== id)
+    }))
+  },
+
   // ============================================
   // Data loading state
   // ============================================
@@ -39,6 +60,7 @@ export const useStore = create((set, get) => ({
       })
     } catch (error) {
       console.error('Failed to initialize store:', error)
+      get().addNotification('error', 'Failed to load your data')
       set({ isLoading: false, isInitialized: true })
     }
   },
@@ -84,6 +106,7 @@ export const useStore = create((set, get) => ({
       })
     } catch (error) {
       console.error('Failed to like commander:', error)
+      get().addNotification('error', 'Failed to like commander')
       // Rollback on error
       set({ likedCommanders })
     }
@@ -100,6 +123,7 @@ export const useStore = create((set, get) => ({
       await apiUnlikeCommander(commanderId)
     } catch (error) {
       console.error('Failed to unlike commander:', error)
+      get().addNotification('error', 'Failed to remove commander')
       // Rollback on error
       set({ likedCommanders })
     }
@@ -187,9 +211,11 @@ export const useStore = create((set, get) => ({
         activeDeckId: newId,
       }))
       
+      get().addNotification('success', 'Deck created')
       return newId
     } catch (error) {
       console.error('Failed to create deck:', error)
+      get().addNotification('error', 'Failed to create deck')
       // Rollback
       set({ decks, activeDeckId: null, view: 'decks' })
       return null
@@ -211,6 +237,7 @@ export const useStore = create((set, get) => ({
       await apiUpdateDeck(deckId, updates)
     } catch (error) {
       console.error('Failed to update deck:', error)
+      get().addNotification('error', 'Failed to update deck')
       set({ decks })
     }
   },
@@ -228,8 +255,10 @@ export const useStore = create((set, get) => ({
     
     try {
       await apiDeleteDeck(deckId)
+      get().addNotification('success', 'Deck deleted')
     } catch (error) {
       console.error('Failed to delete deck:', error)
+      get().addNotification('error', 'Failed to delete deck')
       set({ decks, activeDeckId, view })
     }
   },

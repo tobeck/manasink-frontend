@@ -1,36 +1,45 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { useAuth } from '../context/AuthContext'
 import { useCommanderQueue } from '../hooks/useCommanderQueue'
 import { SwipeCard, ErrorCard } from '../components/SwipeCard'
 import { FilterModal } from '../components/FilterModal'
 import { SignInPrompt } from '../components/SignInPrompt'
+import {
+  HINTS_DISMISS_AFTER,
+  SIGNIN_PROMPT_AFTER,
+  STORAGE_KEYS
+} from '../constants'
 import styles from './SwipeView.module.css'
-
-const HINTS_DISMISS_AFTER = 3
-const SIGNIN_PROMPT_AFTER = 3
-const SIGNIN_PROMPT_KEY = 'manasink:signInPromptDismissed'
 
 export function SwipeView() {
   const [isAnimating, setIsAnimating] = useState(false)
   const [animationDirection, setAnimationDirection] = useState(null)
   const [swipeCount, setSwipeCount] = useState(() => {
-    const saved = localStorage.getItem('manasink:swipeCount')
+    const saved = localStorage.getItem(STORAGE_KEYS.SWIPE_COUNT)
     return saved ? parseInt(saved, 10) : 0
   })
   const [showSignInPrompt, setShowSignInPrompt] = useState(false)
-  
+  const preloadedUrls = useRef(new Set())
+
   const { user } = useAuth()
-  const colorFilters = useStore(s => s.preferences.colorFilters)
-  const likeCommander = useStore(s => s.likeCommander)
-  const passCommander = useStore(s => s.passCommander)
+
+  // Group store selectors to prevent unnecessary re-renders
+  const { colorFilters, likeCommander, passCommander } = useStore(
+    useShallow(s => ({
+      colorFilters: s.preferences.colorFilters,
+      likeCommander: s.likeCommander,
+      passCommander: s.passCommander,
+    }))
+  )
   
   const {
     currentCommander,
     nextUpCommander,
     nextCommander,
     resetQueue,
-    isLoading,
+    isLoading: _isLoading,
     error,
     retry,
   } = useCommanderQueue(colorFilters)
@@ -39,29 +48,29 @@ export function SwipeView() {
 
   const handleSwipe = useCallback((direction) => {
     if (isAnimating || !currentCommander) return
-    
+
     setAnimationDirection(direction)
     setIsAnimating(true)
-    
+
     const newCount = swipeCount + 1
     setSwipeCount(newCount)
-    localStorage.setItem('manasink:swipeCount', newCount.toString())
-    
+    localStorage.setItem(STORAGE_KEYS.SWIPE_COUNT, newCount.toString())
+
     if (direction === 'right') {
       likeCommander(currentCommander)
     } else {
       passCommander(currentCommander)
     }
-    
+
     // Show sign-in prompt after N swipes (only if not signed in and not dismissed)
     if (
-      newCount === SIGNIN_PROMPT_AFTER && 
-      !user && 
-      !localStorage.getItem(SIGNIN_PROMPT_KEY)
+      newCount === SIGNIN_PROMPT_AFTER &&
+      !user &&
+      !localStorage.getItem(STORAGE_KEYS.SIGNIN_PROMPT_DISMISSED)
     ) {
       setTimeout(() => setShowSignInPrompt(true), 400)
     }
-    
+
     setTimeout(() => {
       nextCommander()
       setIsAnimating(false)
@@ -74,7 +83,7 @@ export function SwipeView() {
 
   const handleDismissSignIn = () => {
     setShowSignInPrompt(false)
-    localStorage.setItem(SIGNIN_PROMPT_KEY, 'true')
+    localStorage.setItem(STORAGE_KEYS.SIGNIN_PROMPT_DISMISSED, 'true')
   }
 
   // Keyboard shortcuts
@@ -87,13 +96,28 @@ export function SwipeView() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [handleLike, handlePass])
 
-  // Preload next image
+  // Preload next image with cleanup and deduplication
   useEffect(() => {
-    if (nextUpCommander?.imageLarge) {
-      const img = new Image()
-      img.src = nextUpCommander.imageLarge
+    const imageUrl = nextUpCommander?.imageLarge
+    if (!imageUrl || preloadedUrls.current.has(imageUrl)) return
+
+    const img = new Image()
+    let cancelled = false
+
+    img.onload = () => {
+      if (!cancelled) {
+        preloadedUrls.current.add(imageUrl)
+      }
     }
-  }, [nextUpCommander])
+    img.onerror = () => {
+      console.warn('Failed to preload image:', imageUrl)
+    }
+    img.src = imageUrl
+
+    return () => {
+      cancelled = true
+    }
+  }, [nextUpCommander?.imageLarge])
 
   return (
     <div className={styles.container}>
